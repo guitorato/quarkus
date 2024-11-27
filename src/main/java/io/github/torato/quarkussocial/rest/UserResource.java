@@ -19,9 +19,14 @@ public class UserResource {
 
     @POST
     @Transactional
-    public Response createUser( CreateUserRequest userRequest){
+    public Response createUser(CreateUserRequest userRequest) {
 
         User user = new User();
+
+        if (userRequest.getAge() == null || userRequest.getName().isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Invalid input data").build();
+        }
+
         user.setAge(userRequest.getAge());
         user.setName(userRequest.getName());
         user.persist();
@@ -31,16 +36,21 @@ public class UserResource {
     }
 
     @GET
-    public Response listAllUsers(){
+    public Response listAllUsers() {
         List<User> userList = new ArrayList<>(User.listAll());
+        if(userList.isEmpty()){
+            return Response.status(Response.Status.NOT_FOUND).entity("Not found Users").build();
+        }
         return Response.ok(userList).build();
     }
 
     @GET
     @Path("{name}")
-    public Response getUser(@PathParam("name") String name){
+    public Response getUser(@PathParam("name") String name) {
         PanacheQuery<User> query = User.find("name", name);
-        if(query.list().isEmpty()){return Response.status(Response.Status.NOT_FOUND).build();}
+        if (query.list().isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
 
         return Response.ok(query.list()).build();
     }
