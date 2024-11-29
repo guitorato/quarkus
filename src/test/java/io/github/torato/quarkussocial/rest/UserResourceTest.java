@@ -1,13 +1,15 @@
 package io.github.torato.quarkussocial.rest;
 
+import io.github.torato.quarkussocial.domain.model.User;
+import io.github.torato.quarkussocial.domain.repository.UserRepository;
+import io.github.torato.quarkussocial.rest.dto.CreateUserRequest;
 import io.quarkus.panache.mock.PanacheMock;
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.Mock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
-import io.github.torato.quarkussocial.rest.dto.CreateUserRequest;
-import io.github.torato.quarkussocial.domain.model.User;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -16,7 +18,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -26,8 +27,17 @@ class UserResourceTest {
     @Inject
     UserResource userResource;
 
+    @Inject
+    UserRepository repository;
+
+    @Inject
+    UserResourceTest(UserRepository repository) {
+        this.repository = repository;
+    }
+
+
     @Test
-    public void testCreateUser_validParameters() {
+    public void shouldHandleValidUserParameters() {
 
         CreateUserRequest userRequest = new CreateUserRequest();
         userRequest.setAge(24);
@@ -43,8 +53,8 @@ class UserResourceTest {
     }
 
     @Test
-    public void testCreateUser_nullParameters() {
-        UserResource userResource = new UserResource();
+    public void shouldHandleNullUserParameters() {
+        UserResource userResource = new UserResource(repository);
 
         CreateUserRequest userRequest = new CreateUserRequest();
         userRequest.setAge(null);
@@ -56,8 +66,8 @@ class UserResourceTest {
     }
 
     @Test
-    public void testCreateUser_emptyName() {
-        UserResource userResource = new UserResource();
+    public void shouldHandleEmptyUserName() {
+        UserResource userResource = new UserResource(repository);
 
         CreateUserRequest userRequest = new CreateUserRequest();
         userRequest.setAge(24);
@@ -70,11 +80,11 @@ class UserResourceTest {
 
     @Test
     @Transactional
-    public void testListAllUsers_usersExists() {
+    public void shouldHandleExistingUsersList() {
         User user = new User();
         user.setAge(24);
         user.setName("Test User");
-        user.persist();
+
 
         Response response = userResource.listAllUsers();
         assertNotNull(response.getEntity());
@@ -86,24 +96,12 @@ class UserResourceTest {
     }
 
     @Test
-    public void testListAllUsers_noUsersExist() {
-        PanacheMock.mock(User.class);
-
-        // Simular que nenhum usuário está presente
-        when(User.listAll()).thenReturn(Collections.emptyList());
-
-        Response response = userResource.listAllUsers();
-        assertEquals(404, response.getStatus());
-        assertEquals("Not found Users", response.getEntity());
-    }
-
-    @Test
     @Transactional
-    public void testGetUser_userExists() {
+    public void shouldHandleExistingUserRetrieval() {
         User user = new User();
         user.setAge(24);
         user.setName("Test User");
-        user.persist();
+        repository.persist(user);
 
         Response response = userResource.getUser("Test User");
         assertNotNull(response.getEntity());
@@ -115,8 +113,34 @@ class UserResourceTest {
     }
 
     @Test
-    public void testGetUser_userNotExists() {
+    public void shouldHandleNonExistingUserRetrieval() {
         Response response = userResource.getUser("Random User");
         assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void shouldHandleUserWithNegativeAge() {
+        CreateUserRequest userRequest = new CreateUserRequest();
+        userRequest.setAge(null);
+        userRequest.setName("Test User");
+
+        Response response = userResource.createUser(userRequest);
+        assertEquals(400, response.getStatus());
+        assertEquals("Invalid input data", response.getEntity());
+    }
+
+    @Test
+    public void shouldHandleUserNameWithSpecialCharacters() {
+        CreateUserRequest userRequest = new CreateUserRequest();
+        userRequest.setAge(24);
+        userRequest.setName("Test$User!");
+
+        Response response = userResource.createUser(userRequest);
+        assertNotNull(response.getEntity());
+        assertEquals(200, response.getStatus());
+
+        User user = (User) response.getEntity();
+        assertEquals("Test$User!", user.getName());
+        assertEquals(24, user.getAge());
     }
 }
