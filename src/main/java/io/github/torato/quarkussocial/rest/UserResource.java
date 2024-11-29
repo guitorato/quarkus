@@ -23,7 +23,9 @@ public class UserResource {
 
         User user = new User();
 
-        if (userRequest.getAge() == null || userRequest.getName().isEmpty()) {
+        if (userRequest.getAge()
+
+                == null || userRequest.getName().isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST).entity("Invalid input data").build();
         }
 
