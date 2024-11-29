@@ -1,9 +1,10 @@
 package io.github.torato.quarkussocial.rest;
 
 import io.github.torato.quarkussocial.domain.model.User;
+import io.github.torato.quarkussocial.domain.repository.UserRepository;
 import io.github.torato.quarkussocial.rest.dto.CreateUserRequest;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -16,6 +17,13 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class UserResource {
+
+    private final UserRepository repository;
+
+    @Inject
+    public UserResource(UserRepository repository) {
+        this.repository = repository;
+    }
 
     @POST
     @Transactional
@@ -31,7 +39,7 @@ public class UserResource {
 
         user.setAge(userRequest.getAge());
         user.setName(userRequest.getName());
-        user.persist();
+        repository.persist(user);
 
         return Response.ok(user).build();
 
@@ -39,7 +47,7 @@ public class UserResource {
 
     @GET
     public Response listAllUsers() {
-        List<User> userList = new ArrayList<>(User.listAll());
+        List<User> userList = new ArrayList<>(repository.listAll());
         if(userList.isEmpty()){
             return Response.status(Response.Status.NOT_FOUND).entity("Not found Users").build();
         }
@@ -49,11 +57,27 @@ public class UserResource {
     @GET
     @Path("{name}")
     public Response getUser(@PathParam("name") String name) {
-        PanacheQuery<User> query = User.find("name", name);
+        PanacheQuery<User> query = repository.find("name", name);
         if (query.list().isEmpty()) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
 
         return Response.ok(query.list()).build();
+    }
+
+    @PUT
+    @Path("{id}")
+    @Transactional
+    public Response updateUser(@PathParam("id") Long id , User user){
+        User userFound = repository.findById(id);
+
+        if(userFound == null){
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+
+        userFound.setName(user.getName());
+        userFound.setAge(user.getAge());
+
+        return Response.ok().build();
     }
 }
